@@ -55,33 +55,40 @@ namespace DSM.ScreenReplication.Client
                     Console.WriteLine(trace);
                 }
 
-                Thread.Sleep(100);
+                Thread.Sleep(1000 / 30);
             }
         }
 
         private static byte[] SendCaptureImage()
         {
-            BinaryFormatter binFormatter = new BinaryFormatter();
             PrintScreen printScreen = new PrintScreen();
             Bitmap myBitmap = new Bitmap(printScreen.CaptureScreen());
 
             ImageCodecInfo encoder = ImageCodecInfo.GetImageEncoders().Where(item => item.MimeType == "image/jpeg").First();
             EncoderParameters encoderParameters = new EncoderParameters(2);
             encoderParameters.Param[0] = new EncoderParameter(Encoder.Compression, (long)EncoderValue.CompressionLZW);
-            encoderParameters.Param[1] = new EncoderParameter(Encoder.Quality, 100L);
+            //encoderParameters.Param[1] = new EncoderParameter(Encoder.Quality, 100L);
+            encoderParameters.Param[1] = new EncoderParameter(Encoder.Quality, 30L);
 
-            using (var stream = new MemoryStream())
+            using (MemoryStream originalStream = new MemoryStream())
             {
-                myBitmap.Save(stream, encoder, encoderParameters);
+                myBitmap.Save(originalStream, encoder, encoderParameters);
 
-                return stream.ToArray();
+                return CompressMemoryStreamToByteArray(originalStream);
+            }
+        }
 
-                //using (var zip = new GZipStream(stream, CompressionMode.Decompress))
-                //{
-                //    myBitmap.Save(zip, encoder, encoderParameters);
+        private static byte[] CompressMemoryStreamToByteArray(MemoryStream memoryStream)
+        {
+            using (MemoryStream compressedStream = new MemoryStream())
+            {
+                using (GZipStream gzipStream = new GZipStream(compressedStream, CompressionMode.Compress))
+                {
+                    memoryStream.Position = 0;
+                    memoryStream.CopyTo(gzipStream);
+                }
 
-                //    return stream.ToArray();
-                //}
+                return compressedStream.ToArray();
             }
         }
     }

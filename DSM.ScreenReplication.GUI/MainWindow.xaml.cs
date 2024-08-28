@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -47,7 +48,8 @@ namespace DSM.ScreenReplication.GUI
                         byte[] receivedData = new byte[bytesRead];
                         Array.Copy(buffer, receivedData, bytesRead);
 
-                        imgScreen.Source = ByteArrayToImageSource(receivedData);
+                        //imgScreen.Source = ByteArrayToImageSource(receivedData);
+                        imgScreen.Source = ByteArrayToImageSource(DecompressByteArrayToMemoryStream(receivedData));
                     }
                 }
             }
@@ -69,6 +71,21 @@ namespace DSM.ScreenReplication.GUI
                 bitmap.EndInit();
             }
             return bitmap;
+        }
+
+        private static byte[] DecompressByteArrayToMemoryStream(byte[] compressedData)
+        {
+            using (MemoryStream compressedStream = new MemoryStream(compressedData))
+            {
+                using (GZipStream gzipStream = new GZipStream(compressedStream, CompressionMode.Decompress))
+                {
+                    MemoryStream decompressedStream = new MemoryStream();
+                    gzipStream.CopyTo(decompressedStream); // Descomprimimos
+                    decompressedStream.Position = 0; // Aseguramos que el stream descomprimido esté al inicio
+                    //return decompressedStream;
+                    return decompressedStream.ToArray();
+                }
+            }
         }
     }
 }
