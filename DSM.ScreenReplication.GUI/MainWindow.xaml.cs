@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -16,13 +18,10 @@ using System.Windows.Shapes;
 
 namespace DSM.ScreenReplication.GUI
 {
-    /// <summary>
-    /// Lógica de interacción para MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        private const int Port = 12345; // Debe coincidir con el puerto de la aplicación de consola
-        private const string ServerIp = "127.0.0.1"; // La dirección IP del servidor (localhost)
+        private const int Port = 12345;
+        private const string ServerIp = "127.0.0.1";
 
         public MainWindow()
         {
@@ -34,21 +33,42 @@ namespace DSM.ScreenReplication.GUI
         {
             try
             {
-                using (TcpClient client = new TcpClient())
+                while (true)
                 {
-                    await client.ConnectAsync(ServerIp, Port);
-                    NetworkStream stream = client.GetStream();
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    using (TcpClient client = new TcpClient())
+                    {
+                        await client.ConnectAsync(ServerIp, Port);
 
-                    var receivedData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    tbkTest.Text = $"Datos recibidos: {receivedData}";
+                        NetworkStream stream = client.GetStream();
+
+                        byte[] buffer = new byte[5000000];
+
+                        int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                        byte[] receivedData = new byte[bytesRead];
+                        Array.Copy(buffer, receivedData, bytesRead);
+
+                        imgScreen.Source = ByteArrayToImageSource(receivedData);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}");
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private ImageSource ByteArrayToImageSource(byte[] imageData)
+        {
+            BitmapImage bitmap = new BitmapImage();
+            using (MemoryStream stream = new MemoryStream(imageData))
+            {
+                stream.Seek(0, SeekOrigin.Begin);
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+            }
+            return bitmap;
         }
     }
 }
